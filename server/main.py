@@ -1,20 +1,25 @@
 import threading
 import uvicorn
 import asyncio
+from threading import Semaphore
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
+maximum_client_count: int = 4
 ws_app = FastAPI()
 
 class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
+        self.semaphore = Semaphore(maximum_client_count)
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        self.semaphore.acquire()
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
+        self.semaphore.release()
 
     async def send_personal_message(self, message: str, websocket: WebSocket):
         await websocket.send_text(message)
@@ -33,6 +38,14 @@ def read_root():
 
 @ws_app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: int):
+    threading.Thread(target=client_connection, args=(websocket, client_id)).start()
+
+def client_connection(websocket: WebSocket, client_id: int):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(client_interaction(websocket, client_id))
+
+async def client_interaction(websocket: WebSocket, client_id: int):
     await manager.connect(websocket)
     try:
         while True:
