@@ -13,11 +13,12 @@ ws.onmessage = function(event) {
 };
 
 function sendMessage(event) {
-    var id_input = document.getElementById("targetID")
+    var priv = document.getElementById("sendPrivateTo")
     var input = document.getElementById("messageText")
-    /* var id = id_input.value.trim()
 
-    if (id === ""){
+    var priv_value = priv.value.trim()
+
+    /* if (id === ""){
         alert("DIFUSION")
     }
     else {
