@@ -3,6 +3,7 @@ const API = "ws://localhost:8001/ws/";
 var client_id = Date.now()
 document.querySelector("#ws-id").textContent = client_id;
 var ws = new WebSocket(`${API}${client_id}`);
+
 ws.onmessage = function(event) {
     var messages = document.getElementById('messages')
     var message = document.createElement('li')
@@ -10,9 +11,23 @@ ws.onmessage = function(event) {
     message.appendChild(content)
     messages.appendChild(message)
 };
+
 function sendMessage(event) {
+    var id_input = document.getElementById("targetID")
     var input = document.getElementById("messageText")
+    /* var id = id_input.value.trim()
+
+    if (id === ""){
+        alert("DIFUSION")
+    }
+    else {
+        alert("PERSONAL")
+    } */
+
     ws.send(input.value)
+    /* ws.send(id) */
+
     input.value = ''
+    /* id_input.value = '' */
     event.preventDefault()
 }
