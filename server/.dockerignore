@@ -1,0 +1,4 @@
+.venv
+# Assets
+assets/
+static/

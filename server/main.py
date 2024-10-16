@@ -1,4 +1,5 @@
 import threading
+import os
 import uvicorn
 import asyncio
 from threading import Semaphore, Thread
@@ -63,8 +64,11 @@ async def process_message(websocket: WebSocket, client_id: int, data: str):
     await manager.broadcast(f"Client #{client_id} says: {data}", websocket)
 
 def run():
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", 8080))
+
     # Configure with environment variables
-    config = uvicorn.Config(ws_app, host="127.0.0.1", port=8001, log_level="info")
+    config = uvicorn.Config(ws_app, host=host, port=port, log_level="info")
     server = uvicorn.Server(config)
     server.run()
 
