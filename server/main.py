@@ -3,8 +3,13 @@ import os
 import uvicorn
 import threading
 import asyncio
-from threading import Semaphore, Thread
+import logging
+from threading import Semaphore, Thread, Lock
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import signal
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+logging.basicConfig(level=logging.DEBUG, format='%(threadName)s: %(message)s')
 
 maximum_client_count: int = 4
 ws_app = FastAPI()
@@ -12,16 +17,18 @@ ws_app = FastAPI()
 class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
+        self.lock=Lock()
         self.semaphore = Semaphore(maximum_client_count)
 
     async def connect(self, websocket: WebSocket):
-        await websocket.accept()
+        with manager.lock:
+            await websocket.accept()
         self.active_connections.append(websocket)
-        self.semaphore.acquire()
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-        self.semaphore.release()    
+        with manager.lock:
+            self.active_connections.remove(websocket)
+            websocket.close()
 
     async def send_personal_message(self, message: str, websocket: WebSocket):
         await websocket.send_text(message)
@@ -40,23 +47,20 @@ def read_root():
 
 @ws_app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: int):
-    # if len(manager.active_connections) >= 4:
-    #     await websocket.close(code=1000, reason="Chat room is full.")
-    #     print(f"Client #{client_id} tried to connect, but the chat room is full.")
-    #     return
-    connection=Thread(target=handle_connection, args=(websocket, client_id))
-
-    connection.run()
-
-async def handle_connection(websocket: WebSocket, client_id: int):
-    await manager.connect(websocket)
+    logging.info(f"Trying to connect {client_id}")
     try:
-        while True:
-            data = await websocket.receive_text() 
-            Thread(target=handle_message, args=(websocket, client_id, data)).start()
+        with manager.semaphore:
+            await manager.connect(websocket)
+            logging.info("CONECTION STABLISHED")
+            while True:
+                data = await websocket.receive_text()
+                logging.info(data)
+                Thread(target=handle_message, args=(websocket, client_id, data)).start()
+
     except WebSocketDisconnect:
         manager.disconnect(websocket)
         await manager.broadcast(f"Client #{client_id} left the chat", websocket)
+
 
 def handle_message(websocket: WebSocket, client_id: int, data: str):
     process_message(websocket, client_id, data)
@@ -69,7 +73,7 @@ def run():
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development")  # Por defecto a desarrollo
 
     if ENVIRONMENT == "production":
-        load_dotenv(dotenv_path='prod.env')
+        load_dotenv(dotenv_path='.env.prod')
     else:
         load_dotenv(dotenv_path='.env')
     
