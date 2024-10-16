@@ -121,7 +121,7 @@ def run():
     host = os.getenv("HOST")
     port = int(os.getenv("PORT"))
     
-    config = uvicorn.Config(ws_app, host=host, port=port, log_level="info")
+    config = uvicorn.Config(ws_app, host=host, port=port, log_level="info", workers=4)
     server = uvicorn.Server(config)
     server.run()
 
