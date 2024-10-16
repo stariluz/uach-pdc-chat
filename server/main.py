@@ -1,5 +1,6 @@
-import threading
+from dotenv import load_dotenv
 import os
+import threading
 import uvicorn
 import asyncio
 from threading import Semaphore, Thread
@@ -64,13 +65,20 @@ async def process_message(websocket: WebSocket, client_id: int, data: str):
     await manager.broadcast(f"Client #{client_id} says: {data}", websocket)
 
 def run():
-    host = os.getenv("HOST", "0.0.0.0")
-    port = int(os.getenv("PORT", 8080))
+    ENVIRONMENT = os.getenv("ENVIRONMENT", "development")  # Por defecto a desarrollo
 
-    # Configure with environment variables
+    if ENVIRONMENT == "production":
+        load_dotenv(dotenv_path='prod.env')
+    else:
+        load_dotenv(dotenv_path='.env')
+    
+    host = os.getenv("HOST")
+    port = int(os.getenv("PORT"))
+    
     config = uvicorn.Config(ws_app, host=host, port=port, log_level="info")
     server = uvicorn.Server(config)
     server.run()
 
 if __name__=="__main__":
+    
     run()
