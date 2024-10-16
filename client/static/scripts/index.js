@@ -1,4 +1,4 @@
-const API = "ws://localhost:8001/ws/";
+const API = "ws://uachpdcchatserver-cbeg6f8n.b4a.run/ws/";
 
 var client_id = Date.now()
 document.querySelector("#ws-id").textContent = client_id;
