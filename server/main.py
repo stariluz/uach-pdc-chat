@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 import os
-import threading
 import uvicorn
+import threading
 import asyncio
 from threading import Semaphore, Thread
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -40,12 +40,15 @@ def read_root():
 
 @ws_app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: int):
+    # if len(manager.active_connections) >= 4:
+    #     await websocket.close(code=1000, reason="Chat room is full.")
+    #     print(f"Client #{client_id} tried to connect, but the chat room is full.")
+    #     return
+    connection=Thread(target=handle_connection, args=(websocket, client_id))
 
-    if len(manager.active_connections) >= 4:
-        await websocket.close(code=1000, reason="Chat room is full.")
-        print(f"Client #{client_id} tried to connect, but the chat room is full.")
-        return
-    
+    connection.run()
+
+async def handle_connection(websocket: WebSocket, client_id: int):
     await manager.connect(websocket)
     try:
         while True:
@@ -56,9 +59,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int):
         await manager.broadcast(f"Client #{client_id} left the chat", websocket)
 
 def handle_message(websocket: WebSocket, client_id: int, data: str):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(process_message(websocket, client_id, data))
+    process_message(websocket, client_id, data)
 
 async def process_message(websocket: WebSocket, client_id: int, data: str):
     await manager.send_personal_message(f"You wrote: {data}", websocket)
